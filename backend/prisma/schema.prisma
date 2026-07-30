@@ -1,0 +1,719 @@
+// Prisma schema — Restaurante SaaS (MVP Fase 1)
+// -----------------------------------------------------------------------------
+// Multi-tenant desde já: toda tabela operacional (aggregate root) carrega
+// `establishmentId`. Tabelas-filhas (itens, modificadores, endereços, etc.)
+// são escopadas via seu agregado pai. RLS entra na Fase 2.
+// Valores monetários usam Decimal(10,2) para evitar erro de ponto flutuante.
+// -----------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================ ENUMS ==========================================
+
+enum Role {
+  SUPER_ADMIN // global — não pertence a nenhum estabelecimento (Fase 2)
+  RESELLER_ADMIN // escopado por resellerId (Fase 2)
+  ADMIN
+  MANAGER
+  CASHIER
+  WAITER
+  KITCHEN
+  COURIER
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum TableStatus {
+  FREE
+  OCCUPIED
+  AWAITING_PAYMENT
+  RESERVED
+}
+
+enum TabType {
+  TABLE
+  INDIVIDUAL
+  COUNTER
+  DELIVERY
+}
+
+enum TabStatus {
+  OPEN
+  AWAITING_PAYMENT
+  CLOSED
+  CANCELLED
+}
+
+enum TabItemStatus {
+  PENDING
+  SENT_TO_KITCHEN
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  SALE
+  WITHDRAWAL
+  DEPOSIT
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT
+  DEBIT
+  PIX
+  OTHER
+}
+
+enum DeliveryStatus {
+  RECEIVED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum FiscalDocumentType {
+  NFE
+  NFCE
+}
+
+enum FiscalDocumentStatus {
+  PENDING
+  PROCESSING
+  AUTHORIZED
+  REJECTED
+  CANCELLED
+}
+
+enum FiscalEnvironment {
+  HOMOLOGACAO
+  PRODUCAO
+}
+
+// ============================ HIERARQUIA / TENANT ============================
+
+// Revendedor (white-label) acima do estabelecimento (Fase 2).
+model Reseller {
+  id           String   @id @default(uuid())
+  name         String
+  tradeName    String?
+  logoUrl      String?
+  primaryColor String?  @default("#dc2626")
+  subdomain    String?  @unique
+  cnpj         String   @unique
+  email        String
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  establishments Establishment[]
+  users          User[]
+  subscriptions  ResellerSubscription[]
+}
+
+// Plano de assinatura do SaaS (catálogo global gerido pelo Super Admin).
+model Plan {
+  id                      String   @id @default(uuid())
+  name                    String
+  monthlyPrice            Decimal  @db.Decimal(10, 2)
+  includedFiscalDocuments Int      @default(0)
+  overageBlocked          Boolean  @default(true) // sempre true no MVP
+  active                  Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  subscriptions ResellerSubscription[]
+}
+
+// Assinatura você (Super Admin) ↔ revendedor.
+model ResellerSubscription {
+  id                    String             @id @default(uuid())
+  resellerId            String
+  planId                String
+  status                SubscriptionStatus @default(TRIAL)
+  currentPeriodStart    DateTime           @default(now())
+  currentPeriodEnd      DateTime
+  gatewaySubscriptionId String? // id da assinatura no Asaas (Bloco 5)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  reseller Reseller @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  plan     Plan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([resellerId])
+  @@index([planId])
+}
+
+model Establishment {
+  id                  String   @id @default(uuid())
+  resellerId          String? // null = estabelecimento "direto" (sem revendedor)
+  name                String
+  slug                String   @unique // usado no cardápio público (/public/menu/:slug)
+  cnpj                String   @unique
+  address             String?
+  phone               String?
+  timezone            String   @default("America/Sao_Paulo")
+  active              Boolean  @default(true)
+  // Marca própria do estabelecimento — aplicada ao cardápio público e ao PWA
+  // do motoboy (diferente do white-label do revendedor, que só tema os painéis).
+  logoUrl             String?
+  primaryColor        String?  @default("#dc2626")
+  // Definido pelo revendedor (painel dele); null = sem limite individual.
+  fiscalDocumentQuota Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reseller         Reseller?             @relation(fields: [resellerId], references: [id], onDelete: SetNull)
+  users            User[]
+  // ---- Autorização por PIN ----
+  // Quando ligado, a ação exige o PIN de alguém com permissão para ela —
+  // o garçom chama o gerente, que digita sem precisar trocar de login.
+  requirePinForDiscount   Boolean @default(false)
+  requirePinForCancelItem Boolean @default(false)
+
+  // ---- Entrega ----
+  // Taxa padrão, usada quando o bairro não tem valor próprio em DeliveryZone.
+  deliveryFee       Decimal  @default(0) @db.Decimal(10, 2)
+  // Valor mínimo do pedido para aceitar entrega (0 = sem mínimo).
+  deliveryMinOrder  Decimal  @default(0) @db.Decimal(10, 2)
+  // Acima deste valor a entrega sai de graça (null = nunca é grátis).
+  deliveryFreeAbove Decimal? @db.Decimal(10, 2)
+
+  categories       Category[]
+  products         Product[]
+  modifierGroups   ModifierGroup[]
+  deliveryZones    DeliveryZone[]
+  printers         Printer[]
+  printJobs        PrintJob[]
+  roomAreas        RoomArea[]
+  tables           Table[]
+  tabs             Tab[]
+  cashSessions     CashRegisterSession[]
+  orders           Order[]
+  customers        Customer[]
+  couriers         Courier[]
+  fiscalCredential FiscalCredential?
+
+  @@index([resellerId])
+}
+
+model User {
+  // establishmentId é nullable: SUPER_ADMIN (ambos null) e RESELLER_ADMIN
+  // (só resellerId) não pertencem a um estabelecimento.
+  id              String   @id @default(uuid())
+  establishmentId String?
+  resellerId      String?
+  name            String
+  email           String   @unique // identidade global de login
+  passwordHash    String
+  role            Role     @default(WAITER)
+  active          Boolean  @default(true)
+  // Permissões de sub-usuário (páginas + ações). Catálogo em
+  // src/auth/permissions.ts. ADMIN ignora a lista (acesso total).
+  permissions     String[] @default([])
+  pinCode         String? // hash do PIN de operação sensível (Bloco 3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment?        @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  reseller      Reseller?             @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  waiterTabs    Tab[]                 @relation("TabWaiter")
+  cashSessions  CashRegisterSession[]
+  // Ações que este usuário autorizou por PIN.
+  cancelledItems TabItem[]            @relation("TabItemCancelledBy")
+  authorizedDiscounts Order[]         @relation("OrderDiscountBy")
+
+  @@index([establishmentId])
+  @@index([resellerId])
+}
+
+// ============================ CARDÁPIO / PRODUTOS ============================
+
+model Category {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String
+  order           Int      @default(0)
+  // Categoria de pizza: permite montar item com 2 sabores (meia a meia).
+  allowsHalf      Boolean  @default(false)
+  // Para qual impressora os itens desta categoria vão. Vazio = não imprime,
+  // o setor trabalha só pela tela da cozinha.
+  printerId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  printer       Printer?      @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  products      Product[]
+
+  @@index([establishmentId])
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  establishmentId String
+  categoryId      String
+  name            String
+  description     String? // opcional na prática (deviação consciente do spec)
+  price           Decimal  @db.Decimal(10, 2)
+  active          Boolean  @default(true)
+  imageUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment  Establishment          @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  category       Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  modifierGroups ProductModifierGroup[]
+  tabItems       TabItem[]
+  tabItemHalves  TabItem[]              @relation("TabItemHalfProduct")
+
+  @@index([establishmentId])
+  @@index([categoryId])
+}
+
+// Grupo de complementos (ex.: "Ponto da carne", "Adicionais", "Borda").
+// Pertence ao estabelecimento e é reaproveitado em vários produtos: a
+// hamburgueria cadastra "Adicionais" uma vez e liga nos 15 lanches.
+model ModifierGroup {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String
+  // required + minSelect/maxSelect definem a regra de escolha do cliente.
+  // Ex.: ponto da carne = required, min 1, max 1 (escolhe exatamente um).
+  //      adicionais     = opcional, min 0, max 5 (escolhe até cinco).
+  required  Boolean  @default(false)
+  minSelect Int      @default(0)
+  maxSelect Int      @default(1)
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  establishment Establishment          @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  options       ModifierOption[]
+  products      ProductModifierGroup[]
+
+  @@index([establishmentId])
+}
+
+// Opção dentro do grupo. priceDelta soma ao preço do produto (pode ser 0,
+// como em "sem cebola", ou negativo se o restaurante quiser dar desconto).
+model ModifierOption {
+  id         String   @id @default(uuid())
+  groupId    String
+  name       String
+  priceDelta Decimal  @default(0) @db.Decimal(10, 2)
+  order      Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  group ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+}
+
+// Liga um grupo de complementos a um produto.
+model ProductModifierGroup {
+  productId String
+  groupId   String
+  order     Int    @default(0)
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  group   ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([productId, groupId])
+  @@index([groupId])
+}
+
+// ============================ IMPRESSÃO =====================================
+
+enum PrintJobStatus {
+  PENDING
+  PRINTING
+  DONE
+  FAILED
+}
+
+enum PrintJobKind {
+  KITCHEN // comanda de produção (cozinha, copa, chapa...)
+  TEST // página de teste da configuração
+}
+
+// Impressora térmica de rede. Cada setor tem a sua: cozinha, copa, chapa.
+// Comunicação direta por TCP (padrão ESC/POS na porta 9100) — não depende de
+// nenhum computador ligado no balcão.
+model Printer {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String // "Cozinha", "Copa", "Chapa"
+  host            String // IP fixo na rede do restaurante
+  port            Int      @default(9100)
+  // Colunas do papel: 48 para bobina de 80mm, 32 para 58mm.
+  columns         Int      @default(48)
+  // Quantas vias saem por pedido (algumas cozinhas querem 2).
+  copies          Int      @default(1)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  categories    Category[]
+  jobs          PrintJob[]
+
+  @@index([establishmentId])
+}
+
+// Fila de impressão. Papel acabou ou impressora caiu: o pedido fica aqui e
+// sai quando voltar, em vez de sumir.
+model PrintJob {
+  id              String         @id @default(uuid())
+  establishmentId String
+  printerId       String
+  kind            PrintJobKind   @default(KITCHEN)
+  title           String // "Mesa 3" — para achar na lista
+  // Texto já montado, pronto para virar bytes ESC/POS na hora do envio.
+  content         String
+  status          PrintJobStatus @default(PENDING)
+  attempts        Int            @default(0)
+  lastError       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  printedAt       DateTime?
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  printer       Printer       @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId])
+  @@index([status])
+}
+
+// ============================ SALÃO / MESAS =================================
+
+model RoomArea {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  tables        Table[]
+
+  @@index([establishmentId])
+}
+
+model Table {
+  id              String      @id @default(uuid())
+  establishmentId String
+  roomAreaId      String
+  number          Int
+  status          TableStatus @default(FREE)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  roomArea      RoomArea      @relation(fields: [roomAreaId], references: [id], onDelete: Restrict)
+  tabs          Tab[]
+
+  @@unique([establishmentId, number])
+  @@index([establishmentId])
+  @@index([roomAreaId])
+}
+
+model Tab {
+  id              String    @id @default(uuid())
+  establishmentId String
+  type            TabType
+  tableId         String?
+  label           String? // nome/número da comanda individual
+  status          TabStatus @default(OPEN)
+  waiterId        String?
+  customerId      String?
+  isDelivery      Boolean   @default(false)
+  courierId       String? // motoboy vinculado quando isDelivery = true
+  deliveryAddressId String? // endereço de entrega quando isDelivery = true
+  // Taxa cobrada nesta entrega; entra no total da comanda. Fica gravada aqui
+  // porque a taxa do bairro pode mudar depois sem alterar pedidos antigos.
+  deliveryFee     Decimal   @default(0) @db.Decimal(10, 2)
+  // Preenchido quando esta comanda foi juntada em outra: os itens migraram
+  // e ela deixou de existir como conta separada. Não é venda nem cancelamento.
+  mergedIntoId    String?
+  openedAt        DateTime  @default(now())
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  establishment   Establishment    @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  table           Table?           @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  waiter          User?            @relation("TabWaiter", fields: [waiterId], references: [id], onDelete: SetNull)
+  customer        Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  courier         Courier?         @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  deliveryAddress CustomerAddress? @relation("TabDeliveryAddress", fields: [deliveryAddressId], references: [id], onDelete: SetNull)
+  mergedInto      Tab?             @relation("TabMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedTabs      Tab[]            @relation("TabMerge")
+  items           TabItem[]
+  payments        Payment[]
+  order           Order?
+
+  @@index([establishmentId])
+  @@index([tableId])
+  @@index([status])
+  @@index([courierId])
+  @@index([mergedIntoId])
+}
+
+model TabItem {
+  id        String        @id @default(uuid())
+  tabId     String
+  productId String
+  // 2º sabor da pizza meia a meia. Quando preenchido, unitPrice é o MAIOR
+  // preço entre os dois sabores (praxe das pizzarias no Brasil).
+  halfProductId String?
+  quantity  Int           @default(1)
+  unitPrice Decimal       @db.Decimal(10, 2)
+  notes     String?
+  status    TabItemStatus @default(PENDING)
+  modifiers Json          @default("[]") // snapshot dos modificadores escolhidos
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Quem autorizou o cancelamento (via PIN) e quando — é a pergunta que o
+  // dono faz quando some item da conta.
+  cancelledById String?
+  cancelledAt   DateTime?
+
+  tab         Tab      @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  halfProduct Product? @relation("TabItemHalfProduct", fields: [halfProductId], references: [id], onDelete: Restrict)
+  cancelledBy User?    @relation("TabItemCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  @@index([tabId])
+  @@index([productId])
+  @@index([status])
+}
+
+// ============================ PAGAMENTO / CAIXA =============================
+
+model CashRegisterSession {
+  id              String            @id @default(uuid())
+  establishmentId String
+  userId          String
+  openedAt        DateTime          @default(now())
+  closedAt        DateTime?
+  openingAmount   Decimal           @db.Decimal(10, 2)
+  closingAmount   Decimal?          @db.Decimal(10, 2)
+  status          CashSessionStatus @default(OPEN)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  establishment Establishment  @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  movements     CashMovement[]
+
+  @@index([establishmentId])
+  @@index([status])
+}
+
+model CashMovement {
+  id                    String           @id @default(uuid())
+  cashRegisterSessionId String
+  type                  CashMovementType
+  amount                Decimal          @db.Decimal(10, 2)
+  description           String?
+  createdAt             DateTime         @default(now())
+
+  session CashRegisterSession @relation(fields: [cashRegisterSessionId], references: [id], onDelete: Cascade)
+
+  @@index([cashRegisterSessionId])
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  tabId     String
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(10, 2)
+  createdAt DateTime      @default(now())
+
+  tab Tab @relation(fields: [tabId], references: [id], onDelete: Cascade)
+
+  @@index([tabId])
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  establishmentId String
+  tabId           String   @unique
+  customerId      String?
+  total           Decimal  @db.Decimal(10, 2)
+  discount        Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+
+  // Quem autorizou o desconto (via PIN), quando houve desconto.
+  discountById String?
+
+  establishment  Establishment   @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  tab            Tab             @relation(fields: [tabId], references: [id], onDelete: Restrict)
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  discountBy     User?           @relation("OrderDiscountBy", fields: [discountById], references: [id], onDelete: SetNull)
+  deliveryOrder  DeliveryOrder?
+  fiscalDocument FiscalDocument?
+
+  @@index([establishmentId])
+  @@index([customerId])
+}
+
+// ============================ CLIENTES ======================================
+
+model Customer {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String
+  phone           String
+  email           String?
+  document        String? // CPF/CNPJ
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment     @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  addresses     CustomerAddress[]
+  tabs          Tab[]
+  orders        Order[]
+
+  @@index([establishmentId])
+}
+
+model CustomerAddress {
+  id           String   @id @default(uuid())
+  customerId   String
+  label        String
+  street       String
+  number       String
+  complement   String? // opcional na prática (deviação consciente do spec)
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String
+  isDefault    Boolean  @default(false)
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deliveryOrders DeliveryOrder[]
+  tabs           Tab[]           @relation("TabDeliveryAddress")
+
+  @@index([customerId])
+}
+
+// ============================ DELIVERY ======================================
+
+model DeliveryOrder {
+  id                String         @id @default(uuid())
+  orderId           String         @unique
+  customerAddressId String
+  courierId         String?
+  status            DeliveryStatus @default(RECEIVED)
+  deliveryFee       Decimal        @default(0) @db.Decimal(10, 2)
+  estimatedTime     Int? // minutos
+  statusTimestamps  Json           @default("{}")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerAddress CustomerAddress @relation(fields: [customerAddressId], references: [id], onDelete: Restrict)
+  courier         Courier?        @relation(fields: [courierId], references: [id], onDelete: SetNull)
+
+  @@index([courierId])
+  @@index([status])
+}
+
+// Taxa por bairro. Quando o bairro do cliente casa com um destes, vale este
+// valor em vez da taxa padrão do estabelecimento.
+model DeliveryZone {
+  id              String   @id @default(uuid())
+  establishmentId String
+  neighborhood    String
+  fee             Decimal  @default(0) @db.Decimal(10, 2)
+  // Bairro desativado = não entregamos ali.
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@unique([establishmentId, neighborhood])
+  @@index([establishmentId])
+}
+
+model Courier {
+  id              String   @id @default(uuid())
+  establishmentId String
+  name            String
+  phone           String
+  active          Boolean  @default(true)
+  available       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment  Establishment   @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  deliveryOrders DeliveryOrder[]
+  tabs           Tab[]
+
+  @@index([establishmentId])
+}
+
+// ============================ FISCAL ========================================
+
+model FiscalDocument {
+  id                String               @id @default(uuid())
+  orderId           String               @unique
+  type              FiscalDocumentType
+  status            FiscalDocumentStatus @default(PENDING)
+  focusRef          String               @unique // establishmentId + orderId (idempotência)
+  accessKey         String?
+  xmlUrl            String?
+  danfeUrl          String?
+  errorMessage      String?
+  recipientDocument String // CPF (11) ou CNPJ (14) do destinatário
+  createdAt         DateTime             @default(now())
+  authorizedAt      DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model FiscalCredential {
+  id              String            @id @default(uuid())
+  establishmentId String            @unique
+  focusToken      String
+  cnpj            String
+  environment     FiscalEnvironment @default(HOMOLOGACAO)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+}
