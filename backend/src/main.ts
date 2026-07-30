@@ -22,9 +22,15 @@ async function bootstrap() {
     }),
   );
 
-  // CORS para o frontend Vite em dev.
+  // CORS: aceita uma ou várias origens separadas por vírgula (ex: domínio
+  // com e sem www, ou o preview do EasyPanel junto do domínio final).
+  const origins = config
+    .get<string>('CORS_ORIGIN', 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: origins.length > 1 ? origins : origins[0],
     credentials: true,
   });
 

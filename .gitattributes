@@ -1,0 +1,4 @@
+# Garante LF mesmo em checkout no Windows — scripts que rodam dentro de
+# containers Linux quebram com CRLF (ex: backend/docker-entrypoint.sh).
+* text=auto eol=lf
+*.sh text eol=lf
