@@ -1,9 +1,11 @@
 import axios from 'axios';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { API_BASE_URL } from '../lib/api';
 import type { ModifierGroup } from '../types/api';
 
-// Axios próprio, SEM o interceptor de auth (rotas públicas não usam token).
-const publicApi = axios.create({ baseURL: '/api/v1' });
+// Axios próprio, SEM o interceptor de auth (rotas públicas não usam token),
+// mas com a MESMA base da api autenticada — ver comentário em lib/api.ts.
+const publicApi = axios.create({ baseURL: API_BASE_URL });
 
 export interface PublicProduct {
   id: string;

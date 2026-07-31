@@ -7,11 +7,16 @@ import { useAuthStore } from '../stores/authStore';
 // Em dev, relativo: o proxy do Vite encaminha /api para o backend :3000.
 // Em produção (front e back em domínios/apps separados no EasyPanel),
 // VITE_API_URL é definida no build e aponta pro domínio público do backend.
-const apiBase = import.meta.env.VITE_API_URL
+//
+// Exportado porque as telas públicas (cardápio, motoboy) criam instâncias
+// próprias de axios, sem o interceptor de token. Elas TÊM que usar esta
+// mesma base: com uma cópia relativa, em produção a chamada caía no nginx
+// do próprio site, que devolve o index.html com 200 e a tela quebrava.
+export const API_BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : '/api/v1';
 
-export const api = axios.create({ baseURL: apiBase });
+export const api = axios.create({ baseURL: API_BASE_URL });
 
 // Anexa o access token em toda requisição.
 api.interceptors.request.use((config) => {

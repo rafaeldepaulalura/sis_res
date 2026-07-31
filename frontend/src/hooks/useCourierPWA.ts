@@ -1,9 +1,11 @@
 import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { API_BASE_URL } from '../lib/api';
 import type { Courier, CustomerAddress, DeliveryOrder, DeliveryStatus } from '../types/api';
 
-// Sem interceptor de auth — o motoboy acessa por link (courierId).
-const publicApi = axios.create({ baseURL: '/api/v1' });
+// Sem interceptor de auth — o motoboy acessa por link (courierId) — mas com
+// a MESMA base da api autenticada (ver comentário em lib/api.ts).
+const publicApi = axios.create({ baseURL: API_BASE_URL });
 
 // Comanda montada direto no PDV (balcão/mesa) marcada como delivery — ainda
 // sem Order/DeliveryOrder formal (só ao fechar a comanda no caixa).

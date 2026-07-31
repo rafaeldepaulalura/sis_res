@@ -61,10 +61,12 @@ export function PublicMenuPage() {
   const placeOrder = usePlaceOrder(slug);
 
   // Marca do estabelecimento (cor, logo) — aplicada como theme até sair da página.
+  // `establishment?` (e não só `menu?`): uma resposta fora do formato esperado
+  // não pode derrubar o cardápio inteiro no ErrorBoundary.
   useEffect(() => {
-    applyPrimaryColor(menu?.establishment.primaryColor);
+    applyPrimaryColor(menu?.establishment?.primaryColor);
     return () => resetPrimaryColor();
-  }, [menu?.establishment.primaryColor]);
+  }, [menu?.establishment?.primaryColor]);
 
   // Carrinho por linha: uma pizza meia a meia é uma linha própria, distinta
   // da pizza inteira do mesmo sabor. A chave combina os dois sabores.
@@ -277,7 +279,10 @@ export function PublicMenuPage() {
     return (
       <div className="p-6 text-center text-gray-500">Carregando cardápio…</div>
     );
-  if (isError || !menu)
+  // Checa `establishment` e não só `menu`: se a resposta vier fora do formato
+  // (ex.: a chamada caindo no servidor de arquivos em vez da API), é melhor
+  // mostrar esta mensagem do que quebrar a página inteira.
+  if (isError || !menu?.establishment)
     return (
       <div className="p-6 text-center text-red-600">
         Cardápio não encontrado.
