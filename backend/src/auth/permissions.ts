@@ -8,6 +8,7 @@ import { Role } from '@prisma/client';
 
 // Páginas do PDV (cada uma corresponde a um item do menu lateral).
 export const PAGE_PERMISSIONS = [
+  'dashboard',
   'mesas',
   'balcao',
   'comandas',
@@ -42,6 +43,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [...ALL_PERMISSIONS],
   MANAGER: [...ALL_PERMISSIONS],
   CASHIER: [
+    'dashboard',
     'mesas',
     'balcao',
     'comandas',
@@ -53,7 +55,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, Permission[]> = {
     'caixa.abrir_fechar',
     'caixa.movimentacao',
   ],
-  WAITER: ['mesas', 'balcao', 'comandas', 'cozinha'],
+  WAITER: ['dashboard', 'mesas', 'balcao', 'comandas', 'cozinha'],
   KITCHEN: ['cozinha'],
   COURIER: ['delivery'],
   // Papéis fora do estabelecimento têm painel próprio (não usam este catálogo).

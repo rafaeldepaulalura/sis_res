@@ -4,6 +4,7 @@ import type { Permission } from './permissions';
 // Ordem de preferência da tela inicial do PDV, da mais "gerencial" para a
 // mais operacional. O usuário cai na primeira que ele tem permissão de ver.
 const HOME_ORDER: { permission: Permission; path: string }[] = [
+  { permission: 'dashboard', path: '/dashboard' },
   { permission: 'relatorios', path: '/relatorios' },
   { permission: 'mesas', path: '/mesas' },
   { permission: 'balcao', path: '/balcao' },
@@ -20,8 +21,11 @@ const HOME_ORDER: { permission: Permission; path: string }[] = [
 export function homeForRole(role: Role): string {
   if (role === 'SUPER_ADMIN') return '/admin';
   if (role === 'RESELLER_ADMIN') return '/revendedor';
-  if (role === 'ADMIN' || role === 'MANAGER') return '/relatorios';
-  return '/mesas';
+  // Cozinha e motoboy caem direto na tela de trabalho deles; o resto começa
+  // pelo painel.
+  if (role === 'KITCHEN') return '/cozinha';
+  if (role === 'COURIER') return '/delivery';
+  return '/dashboard';
 }
 
 // Home do usuário considerando as permissões que o dono liberou — evita

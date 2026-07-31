@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 // do backend, que roda em toda requisição.
 
 export const PAGE_PERMISSIONS = [
+  'dashboard',
   'mesas',
   'balcao',
   'comandas',
@@ -30,6 +31,7 @@ export type Permission =
 
 // Rótulos exibidos na tela de criação/edição de sub-usuário.
 export const PERMISSION_LABEL: Record<Permission, string> = {
+  dashboard: 'Dashboard (visão geral)',
   mesas: 'Mesas',
   balcao: 'Balcão',
   comandas: 'Comandas',
@@ -48,6 +50,7 @@ export const PERMISSION_LABEL: Record<Permission, string> = {
 
 // Explicação curta para as páginas mais sensíveis.
 export const PERMISSION_HINT: Partial<Record<Permission, string>> = {
+  dashboard: 'Só mostra faturamento se tiver também Relatórios',
   relatorios: 'Mostra quanto o restaurante fatura',
   financeiro: 'Mostra o dinheiro em caixa',
   configuracoes: 'Permite criar e editar outros usuários',
@@ -58,6 +61,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
   ADMIN: [...PAGE_PERMISSIONS, ...ACTION_PERMISSIONS],
   MANAGER: [...PAGE_PERMISSIONS, ...ACTION_PERMISSIONS],
   CASHIER: [
+    'dashboard',
     'mesas',
     'balcao',
     'comandas',
@@ -69,7 +73,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
     'caixa.abrir_fechar',
     'caixa.movimentacao',
   ],
-  WAITER: ['mesas', 'balcao', 'comandas', 'cozinha'],
+  WAITER: ['dashboard', 'mesas', 'balcao', 'comandas', 'cozinha'],
   KITCHEN: ['cozinha'],
   COURIER: ['delivery'],
 };

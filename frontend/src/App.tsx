@@ -9,6 +9,7 @@ import { CashRegisterPage } from './pages/CashRegisterPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { ComandasPage } from './pages/ComandasPage';
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { DeliveryPage } from './pages/DeliveryPage';
 import { KitchenPage } from './pages/KitchenPage';
 import { LoginPage } from './pages/LoginPage';
@@ -71,6 +72,9 @@ function App() {
         <Route element={<RoleRoute roles={[...OPERATIONAL]} />}>
           <Route element={<AppLayout />}>
             <Route path="/sem-acesso" element={<SemAcessoPage />} />
+            <Route element={<PermissionRoute permission="dashboard" />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Route>
             <Route element={<PermissionRoute permission="mesas" />}>
               <Route path="/mesas" element={<TablesPage />} />
             </Route>

@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { DEFAULT_PERMISSIONS } from '../src/auth/permissions';
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,10 @@ async function main() {
       email: 'garcom@restaurante.local',
       passwordHash: waiterPassword,
       role: Role.WAITER,
+      // Sem isto o garçom de exemplo nasce sem permissão nenhuma e cai
+      // direto em "sem acesso" — o padrão do papel é o que a tela de
+      // Equipe também sugere ao criar um funcionário.
+      permissions: DEFAULT_PERMISSIONS[Role.WAITER],
     },
   });
   console.log('✅ Garçom: garcom@restaurante.local (senha: garcom123)');

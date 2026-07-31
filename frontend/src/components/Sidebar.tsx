@@ -14,6 +14,7 @@ interface NavItem {
 
 // Módulos do sistema. Os desabilitados chegam nos próximos blocos.
 const NAV: NavItem[] = [
+  { label: 'Dashboard', icon: '🏠', path: '/dashboard', enabled: true, permission: 'dashboard' },
   { label: 'Mesas', icon: '🍽️', path: '/mesas', enabled: true, permission: 'mesas' },
   { label: 'Balcão', icon: '🧾', path: '/balcao', enabled: true, permission: 'balcao' },
   { label: 'Comandas', icon: '📋', path: '/comandas', enabled: true, permission: 'comandas' },
