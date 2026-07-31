@@ -5,6 +5,7 @@ import { AreaChart, BarChart, DonutChart } from '../components/Charts';
 import { useDashboard, type Dashboard } from '../hooks/useDashboard';
 import { useEstablishmentBranding } from '../hooks/useEstablishmentBranding';
 import { brl } from '../lib/format';
+import { imagemSrc } from '../lib/imagem';
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: 'Dinheiro',
@@ -217,7 +218,7 @@ export function DashboardPage() {
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-5">
         {branding?.logoUrl ? (
           <img
-            src={branding.logoUrl}
+            src={imagemSrc(branding.logoUrl)}
             alt=""
             className="h-14 w-14 shrink-0 rounded-full object-cover"
           />

@@ -1,10 +1,5 @@
-import {
-  IsHexColor,
-  IsOptional,
-  IsString,
-  IsUrl,
-  MaxLength,
-} from 'class-validator';
+import { IsHexColor, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsImageUrl } from '../../common/image-url.decorator';
 
 export class UpdateBrandingDto {
   @IsOptional()
@@ -22,6 +17,6 @@ export class UpdateBrandingDto {
   primaryColor?: string;
 
   @IsOptional()
-  @IsUrl({ require_tld: false })
+  @IsImageUrl()
   logoUrl?: string;
 }

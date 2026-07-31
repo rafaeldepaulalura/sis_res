@@ -12,6 +12,7 @@ export interface PublicProduct {
   name: string;
   description: string | null;
   price: string;
+  // Caminho da foto ("/uploads/<id>") — passe por imagemSrc() para exibir.
   imageUrl: string | null;
   // Complementos que o cliente escolhe ao pedir.
   modifierGroups?: ModifierGroup[];

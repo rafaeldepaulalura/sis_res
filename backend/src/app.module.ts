@@ -24,6 +24,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { PublicMenuModule } from './public-menu/public-menu.module';
 import { ReportsModule } from './reports/reports.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { TablesModule } from './tables/tables.module';
 import { TabsModule } from './tabs/tabs.module';
@@ -49,6 +50,7 @@ import { TabsModule } from './tabs/tabs.module';
     PrintingModule,
     PublicMenuModule,
     ReportsModule,
+    UploadsModule,
     UsersModule,
     AdminModule,
     ResellerModule,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { ImageUpload } from '../components/ImageUpload';
 import { ModifierGroupsPanel } from '../components/ModifierGroupsPanel';
 import { useCategories } from '../hooks/useCatalog';
 import {
@@ -187,7 +188,9 @@ function ProductForm({
     const dto: ProductInput = {
       ...form,
       description: form.description || undefined,
-      imageUrl: form.imageUrl || undefined,
+      // Vai sempre, inclusive vazio: é assim que "Remover" apaga a foto de um
+      // produto já salvo (com `|| undefined` o campo sumia e nada mudava).
+      imageUrl: form.imageUrl ?? '',
     };
     const opts = {
       // Ao editar, salva também quais complementos o produto usa.
@@ -250,11 +253,12 @@ function ProductForm({
         placeholder="Descrição (opcional)"
         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
       />
-      <input
-        value={form.imageUrl}
-        onChange={(e) => set('imageUrl', e.target.value)}
-        placeholder="URL da imagem (opcional)"
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+      <ImageUpload
+        label="Foto do produto (opcional)"
+        hint="Aparece no cardápio online."
+        shape="wide"
+        value={form.imageUrl || null}
+        onChange={(url) => set('imageUrl', url ?? '')}
       />
       <label className="flex items-center gap-2 text-sm text-gray-600">
         <input

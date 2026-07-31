@@ -11,6 +11,7 @@ import {
   type StaffUser,
 } from '../hooks/useAdmin';
 import { DeliverySettingsPanel } from '../components/DeliverySettingsPanel';
+import { ImageUpload } from '../components/ImageUpload';
 import { PrintersPanel } from '../components/PrintersPanel';
 import { PermissionPicker } from '../components/PermissionPicker';
 import { DEFAULT_PERMISSIONS } from '../lib/permissions';
@@ -74,11 +75,11 @@ function BrandingCard() {
           placeholder="Nome do restaurante"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
         />
-        <input
-          value={f.logoUrl}
-          onChange={(e) => setF((s) => ({ ...s, logoUrl: e.target.value }))}
-          placeholder="URL da logo (https://...)"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+        <ImageUpload
+          label="Logo"
+          hint="Aparece no menu lateral, no cardápio online e na tela do motoboy."
+          value={f.logoUrl || null}
+          onChange={(url) => setF((s) => ({ ...s, logoUrl: url ?? '' }))}
         />
         <div className="flex gap-2">
           <input

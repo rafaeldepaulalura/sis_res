@@ -130,6 +130,7 @@ model Reseller {
   establishments Establishment[]
   users          User[]
   subscriptions  ResellerSubscription[]
+  uploads        Upload[]
 }
 
 // Plano de assinatura do SaaS (catálogo global gerido pelo Super Admin).
@@ -184,13 +185,13 @@ model Establishment {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  reseller         Reseller?             @relation(fields: [resellerId], references: [id], onDelete: SetNull)
-  users            User[]
+  reseller                Reseller? @relation(fields: [resellerId], references: [id], onDelete: SetNull)
+  users                   User[]
   // ---- Autorização por PIN ----
   // Quando ligado, a ação exige o PIN de alguém com permissão para ela —
   // o garçom chama o gerente, que digita sem precisar trocar de login.
-  requirePinForDiscount   Boolean @default(false)
-  requirePinForCancelItem Boolean @default(false)
+  requirePinForDiscount   Boolean   @default(false)
+  requirePinForCancelItem Boolean   @default(false)
 
   // ---- Entrega ----
   // Taxa padrão, usada quando o bairro não tem valor próprio em DeliveryZone.
@@ -206,6 +207,7 @@ model Establishment {
   deliveryZones    DeliveryZone[]
   printers         Printer[]
   printJobs        PrintJob[]
+  uploads          Upload[]
   roomAreas        RoomArea[]
   tables           Table[]
   tabs             Tab[]
@@ -236,13 +238,13 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  establishment Establishment?        @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
-  reseller      Reseller?             @relation(fields: [resellerId], references: [id], onDelete: Cascade)
-  waiterTabs    Tab[]                 @relation("TabWaiter")
-  cashSessions  CashRegisterSession[]
+  establishment       Establishment?        @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  reseller            Reseller?             @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  waiterTabs          Tab[]                 @relation("TabWaiter")
+  cashSessions        CashRegisterSession[]
   // Ações que este usuário autorizou por PIN.
-  cancelledItems TabItem[]            @relation("TabItemCancelledBy")
-  authorizedDiscounts Order[]         @relation("OrderDiscountBy")
+  cancelledItems      TabItem[]             @relation("TabItemCancelledBy")
+  authorizedDiscounts Order[]               @relation("OrderDiscountBy")
 
   @@index([establishmentId])
   @@index([resellerId])
@@ -302,13 +304,13 @@ model ModifierGroup {
   // required + minSelect/maxSelect definem a regra de escolha do cliente.
   // Ex.: ponto da carne = required, min 1, max 1 (escolhe exatamente um).
   //      adicionais     = opcional, min 0, max 5 (escolhe até cinco).
-  required  Boolean  @default(false)
-  minSelect Int      @default(0)
-  maxSelect Int      @default(1)
-  order     Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  required        Boolean  @default(false)
+  minSelect       Int      @default(0)
+  maxSelect       Int      @default(1)
+  order           Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   establishment Establishment          @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
   options       ModifierOption[]
@@ -443,27 +445,27 @@ model Table {
 }
 
 model Tab {
-  id              String    @id @default(uuid())
-  establishmentId String
-  type            TabType
-  tableId         String?
-  label           String? // nome/número da comanda individual
-  status          TabStatus @default(OPEN)
-  waiterId        String?
-  customerId      String?
-  isDelivery      Boolean   @default(false)
-  courierId       String? // motoboy vinculado quando isDelivery = true
+  id                String    @id @default(uuid())
+  establishmentId   String
+  type              TabType
+  tableId           String?
+  label             String? // nome/número da comanda individual
+  status            TabStatus @default(OPEN)
+  waiterId          String?
+  customerId        String?
+  isDelivery        Boolean   @default(false)
+  courierId         String? // motoboy vinculado quando isDelivery = true
   deliveryAddressId String? // endereço de entrega quando isDelivery = true
   // Taxa cobrada nesta entrega; entra no total da comanda. Fica gravada aqui
   // porque a taxa do bairro pode mudar depois sem alterar pedidos antigos.
-  deliveryFee     Decimal   @default(0) @db.Decimal(10, 2)
+  deliveryFee       Decimal   @default(0) @db.Decimal(10, 2)
   // Preenchido quando esta comanda foi juntada em outra: os itens migraram
   // e ela deixou de existir como conta separada. Não é venda nem cancelamento.
-  mergedIntoId    String?
-  openedAt        DateTime  @default(now())
-  closedAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  mergedIntoId      String?
+  openedAt          DateTime  @default(now())
+  closedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   establishment   Establishment    @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
   table           Table?           @relation(fields: [tableId], references: [id], onDelete: SetNull)
@@ -485,19 +487,19 @@ model Tab {
 }
 
 model TabItem {
-  id        String        @id @default(uuid())
-  tabId     String
-  productId String
+  id            String        @id @default(uuid())
+  tabId         String
+  productId     String
   // 2º sabor da pizza meia a meia. Quando preenchido, unitPrice é o MAIOR
   // preço entre os dois sabores (praxe das pizzarias no Brasil).
   halfProductId String?
-  quantity  Int           @default(1)
-  unitPrice Decimal       @db.Decimal(10, 2)
-  notes     String?
-  status    TabItemStatus @default(PENDING)
-  modifiers Json          @default("[]") // snapshot dos modificadores escolhidos
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  quantity      Int           @default(1)
+  unitPrice     Decimal       @db.Decimal(10, 2)
+  notes         String?
+  status        TabItemStatus @default(PENDING)
+  modifiers     Json          @default("[]") // snapshot dos modificadores escolhidos
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // Quem autorizou o cancelamento (via PIN) e quando — é a pergunta que o
   // dono faz quando some item da conta.
@@ -716,4 +718,25 @@ model FiscalCredential {
   updatedAt       DateTime          @updatedAt
 
   establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+}
+
+// Imagem enviada pelo usuário (logo do restaurante, logo do revendedor, foto
+// do produto). Guardada no banco de propósito: o disco do container é
+// descartado a cada deploy, e as fotos sumiriam. O front reduz a imagem antes
+// de enviar, então cada linha fica na casa das dezenas de KB.
+model Upload {
+  id              String   @id @default(uuid())
+  // Dono do arquivo — exatamente um dos dois é preenchido.
+  establishmentId String?
+  resellerId      String?
+  mimeType        String
+  size            Int
+  data            Bytes
+  createdAt       DateTime @default(now())
+
+  establishment Establishment? @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  reseller      Reseller?      @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId])
+  @@index([resellerId])
 }

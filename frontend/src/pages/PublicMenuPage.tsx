@@ -17,6 +17,7 @@ import { ModifierPicker } from '../components/ModifierPicker';
 import { applyPrimaryColor, resetPrimaryColor } from '../lib/theme';
 import { apiErrorMessage } from '../lib/api';
 import { brl } from '../lib/format';
+import { imagemSrc } from '../lib/imagem';
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'PIX', label: 'PIX' },
@@ -546,7 +547,7 @@ export function PublicMenuPage() {
       <header className="bg-primary px-5 py-6 text-primary-fg">
         {menu.establishment.logoUrl && (
           <img
-            src={menu.establishment.logoUrl}
+            src={imagemSrc(menu.establishment.logoUrl)}
             alt=""
             className="mb-2 h-10 w-10 rounded-lg object-cover"
           />
@@ -574,6 +575,14 @@ export function PublicMenuPage() {
                   key={p.id}
                   className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"
                 >
+                  {p.imageUrl && (
+                    <img
+                      src={imagemSrc(p.imageUrl)}
+                      alt=""
+                      loading="lazy"
+                      className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                    />
+                  )}
                   <div className="flex-1">
                     <div className="font-medium text-gray-800">{p.name}</div>
                     {p.description && (

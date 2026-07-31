@@ -4,6 +4,7 @@ import {
   useCourierDeliveries,
   useCourierStatus,
 } from '../hooks/useCourierPWA';
+import { imagemSrc } from '../lib/imagem';
 import { applyPrimaryColor, resetPrimaryColor } from '../lib/theme';
 import { apiErrorMessage } from '../lib/api';
 import { brl } from '../lib/format';
@@ -32,7 +33,7 @@ export function MotoboyPage() {
       <header className="bg-primary px-5 py-6 text-primary-fg">
         {data.courier.establishment?.logoUrl && (
           <img
-            src={data.courier.establishment.logoUrl}
+            src={imagemSrc(data.courier.establishment.logoUrl)}
             alt=""
             className="mb-2 h-10 w-10 rounded-lg object-cover"
           />

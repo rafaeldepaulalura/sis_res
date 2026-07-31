@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ImageUpload } from '../../components/ImageUpload';
 import { useBranding, useUpdateBranding } from '../../hooks/useResellerPanel';
 import { apiErrorMessage } from '../../lib/api';
 import { applyPrimaryColor } from '../../lib/theme';
@@ -30,7 +31,9 @@ export function BrandingPage() {
         name: form.name,
         tradeName: form.tradeName || undefined,
         primaryColor: form.primaryColor,
-        logoUrl: form.logoUrl || undefined,
+        // Vai sempre, inclusive vazio: é assim que "Remover" apaga a logo
+        // (com `|| undefined` o campo sumia e nada mudava).
+        logoUrl: form.logoUrl ?? '',
       },
       {
         onSuccess: (b) => applyPrimaryColor(b.primaryColor),
@@ -75,15 +78,12 @@ export function BrandingPage() {
             <span className="text-sm text-gray-500">{form.primaryColor}</span>
           </div>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">URL do logo</label>
-          <input
-            value={form.logoUrl}
-            onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))}
-            placeholder="https://…"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
+        <ImageUpload
+          label="Logo"
+          hint="Aparece no painel dos seus clientes."
+          value={form.logoUrl || null}
+          onChange={(url) => setForm((f) => ({ ...f, logoUrl: url ?? '' }))}
+        />
 
         <div className="rounded-lg bg-gray-50 p-3">
           <div className="text-xs text-gray-500">Prévia</div>

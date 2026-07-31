@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
 import { useEstablishmentBranding } from '../hooks/useEstablishmentBranding';
+import { imagemSrc } from '../lib/imagem';
 import { useCan, type Permission } from '../lib/permissions';
 
 interface NavItem {
@@ -49,7 +50,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
         {/* Marca do restaurante definida em Configurações. */}
         {branding?.logoUrl ? (
           <img
-            src={branding.logoUrl}
+            src={imagemSrc(branding.logoUrl)}
             alt=""
             className="h-9 w-9 shrink-0 rounded-lg object-cover"
           />

@@ -3,11 +3,11 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   IsUUID,
   MaxLength,
   Min,
 } from 'class-validator';
+import { IsImageUrl } from '../../common/image-url.decorator';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -34,6 +34,6 @@ export class UpdateProductDto {
   active?: boolean;
 
   @IsOptional()
-  @IsUrl({ require_tld: false })
+  @IsImageUrl()
   imageUrl?: string;
 }

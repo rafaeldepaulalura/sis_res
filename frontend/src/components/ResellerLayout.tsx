@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { PanelLayout } from './PanelLayout';
 import { useBranding } from '../hooks/useResellerPanel';
+import { imagemSrc } from '../lib/imagem';
 import { applyPrimaryColor, resetPrimaryColor } from '../lib/theme';
 
 const NAV = [
@@ -21,7 +22,7 @@ export function ResellerLayout() {
   const brandName = branding?.tradeName ?? branding?.name ?? 'Revendedor';
   const brandIcon = branding?.logoUrl ? (
     <img
-      src={branding.logoUrl}
+      src={imagemSrc(branding.logoUrl)}
       alt=""
       className="h-full w-full object-cover"
     />

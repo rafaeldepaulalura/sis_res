@@ -1,10 +1,5 @@
-import {
-  IsBoolean,
-  IsOptional,
-  IsString,
-  IsUrl,
-  MaxLength,
-} from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsImageUrl } from '../../common/image-url.decorator';
 
 // Marca própria do estabelecimento (nome, logo, cor) — aplicada ao cardápio
 // público e ao PWA do motoboy. Distinto do white-label do revendedor.
@@ -24,8 +19,7 @@ export class UpdateEstablishmentBrandingDto {
   name?: string;
 
   @IsOptional()
-  @IsUrl({ require_tld: false })
-  @MaxLength(500)
+  @IsImageUrl()
   logoUrl?: string;
 
   @IsOptional()
